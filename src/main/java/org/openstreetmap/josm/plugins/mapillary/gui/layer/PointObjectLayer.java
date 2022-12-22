@@ -259,8 +259,8 @@ public class PointObjectLayer extends MVTLayer
             for (INode node : this.getData().getSelectedNodes()) {
                 final Point p = mv.getPoint(node);
                 final ImageSizes size = ImageSizes.MAP;
-                g.drawRect(p.x - size.getAdjustedWidth(), p.y - size.getAdjustedHeight(), 2 * size.getAdjustedWidth(),
-                    2 * size.getAdjustedHeight());
+                g.drawRect(p.x - size.getWidth(), p.y - size.getHeight(), 2 * size.getWidth(),
+                    2 * size.getHeight());
             }
             g.setColor(
                 new NamedColorProperty("mapillary.map.object.highlight", Color.MAGENTA.brighter().brighter()).get());
@@ -269,8 +269,8 @@ public class PointObjectLayer extends MVTLayer
                 .filter(INode.class::isInstance).map(INode.class::cast).collect(Collectors.toList())) {
                 final Point p = mv.getPoint(node);
                 final ImageSizes size = ImageSizes.MAP;
-                g.drawRect(p.x - size.getAdjustedWidth(), p.y - size.getAdjustedHeight(), 2 * size.getAdjustedWidth(),
-                    2 * size.getAdjustedHeight());
+                g.drawRect(p.x - size.getWidth(), p.y - size.getHeight(), 2 * size.getWidth(),
+                    2 * size.getHeight());
             }
         }
     }
@@ -283,8 +283,8 @@ public class PointObjectLayer extends MVTLayer
             // Don't draw additional windows when preset window is open
             return;
         }
-        int iconWidth = ImageProvider.ImageSizes.MAP.getAdjustedWidth();
-        int iconHeight = ImageProvider.ImageSizes.MAP.getAdjustedHeight();
+        int iconWidth = ImageProvider.ImageSizes.MAP.getWidth();
+        int iconHeight = ImageProvider.ImageSizes.MAP.getHeight();
         Point p = mv.getPoint((INode) mapillaryObject);
         final JWindow displayedWindow = displayedWindows.getOrDefault(mapillaryObject,
             new JWindow(MainApplication.getMainFrame()));

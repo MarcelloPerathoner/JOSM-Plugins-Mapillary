@@ -316,6 +316,7 @@ public class MapillaryImageEntry
     }
 
     private BufferedImageCacheEntry setFullImage(final BufferedImageCacheEntry entry) {
+        Logging.info("setFullImage");
         final byte[] content = entry.getContent();
         // Load image
         try {

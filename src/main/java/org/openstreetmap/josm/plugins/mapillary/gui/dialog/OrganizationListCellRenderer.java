@@ -49,8 +49,8 @@ public class OrganizationListCellRenderer extends DefaultListCellRenderer {
      */
     private static ImageIcon scaleOrganizationIcon(final OrganizationRecord organization) {
         final ImageProvider.ImageSizes size = ImageProvider.ImageSizes.DEFAULT;
-        final Image scaledImage = organization.getAvatar().getImage().getScaledInstance(size.getAdjustedWidth(),
-            size.getAdjustedHeight(), Image.SCALE_SMOOTH);
+        final Image scaledImage = organization.getAvatar().getImage().getScaledInstance(size.getWidth(),
+            size.getHeight(), Image.SCALE_SMOOTH);
         return new ImageIcon(scaledImage);
     }
 }

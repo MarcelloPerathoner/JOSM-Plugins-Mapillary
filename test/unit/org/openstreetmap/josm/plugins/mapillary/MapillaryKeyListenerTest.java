@@ -2,8 +2,6 @@ package org.openstreetmap.josm.plugins.mapillary;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.lang.reflect.Field;
-
 import javax.swing.JPopupMenu;
 
 import org.junit.jupiter.api.Test;
@@ -46,14 +44,12 @@ class MapillaryKeyListenerTest {
     static JOSMTestRules josmTestRules = new JOSMTestRules().main().projection();
 
     @Test
-    void testListenerNoSpuriousActions() throws ReflectiveOperationException {
+    void testListenerNoSpuriousActions() {
         final DataSet osmData = new DataSet();
         MainApplication.getLayerManager().addLayer(new OsmDataLayer(osmData, "testListenerNoSpuriousActions", null));
 
         final PropertiesDialog properties = MainApplication.getMap().propertiesDialog;
-        final Field tagMenuField = PropertiesDialog.class.getDeclaredField("tagMenu");
-        tagMenuField.setAccessible(true);
-        final JPopupMenu tagMenu = (JPopupMenu) tagMenuField.get(properties);
+        final JPopupMenu tagMenu = properties.getTagMenu();
 
         new MapillaryKeyListener(properties, tagMenu);
 
@@ -83,7 +79,7 @@ class MapillaryKeyListenerTest {
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.BAD_REQUEST)
     @ParameterizedTest
     @ValueSource(strings = { "mapillary", "mapillary:image", "mapillary:map_feature" })
-    void testWithMapillaryKey(final String key) throws ReflectiveOperationException {
+    void testWithMapillaryKey(final String key) {
         final DataSet osmData = new DataSet();
         MainApplication.getLayerManager().addLayer(new OsmDataLayer(osmData, "testListenerNoSpuriousActions", null));
 
@@ -104,9 +100,7 @@ class MapillaryKeyListenerTest {
         MainApplication.getLayerManager().addLayer(pointObjectLayer);
 
         final PropertiesDialog properties = MainApplication.getMap().propertiesDialog;
-        final Field tagMenuField = PropertiesDialog.class.getDeclaredField("tagMenu");
-        tagMenuField.setAccessible(true);
-        final JPopupMenu tagMenu = (JPopupMenu) tagMenuField.get(properties);
+        final JPopupMenu tagMenu = properties.getTagMenu();
 
         new MapillaryKeyListener(properties, tagMenu);
 
@@ -118,6 +112,7 @@ class MapillaryKeyListenerTest {
         }
         osmData.addPrimitive(node1);
         osmData.setSelected(node1);
+        properties.getTagTable().setRowSelectionInterval(0, 1);
         GuiHelper.runInEDTAndWait(() -> tagMenu.setVisible(true));
         assertEquals(TAG_MENU_COMPONENT_COUNT + 1, tagMenu.getComponentCount());
         GuiHelper.runInEDTAndWait(() -> tagMenu.setVisible(false));

@@ -34,7 +34,7 @@ import org.openstreetmap.josm.plugins.mapillary.gui.layer.PointObjectLayer;
 import org.openstreetmap.josm.plugins.mapillary.utils.MapillaryProperties;
 import org.openstreetmap.josm.tools.Destroyable;
 import org.openstreetmap.josm.tools.Geometry;
-import org.openstreetmap.josm.tools.HiDPISupport;
+import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.SubclassFilteredCollection;
 
 /**
@@ -206,7 +206,7 @@ public class DataMouseListener extends MouseInputAdapter implements Destroyable 
         final LatLon latLon = MainApplication.getMap().mapView.getLatLon(point.getX(), point.getY());
         final BBox bbox = new BBox();
         bbox.add(latLon);
-        final double pixelBuffer = HiDPISupport.getHiDPIScale() * 5;
+        final double pixelBuffer = ImageProvider.getGuiScale() * 5;
         bbox.add(Geometry.getLatLonFrom(latLon, Math.PI / 4, metersPerPixel * pixelBuffer));
         bbox.add(Geometry.getLatLonFrom(latLon, 5 * Math.PI / 4, metersPerPixel * pixelBuffer));
         return bbox;

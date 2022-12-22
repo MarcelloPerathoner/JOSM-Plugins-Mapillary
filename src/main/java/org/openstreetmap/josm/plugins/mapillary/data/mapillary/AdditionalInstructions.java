@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -25,10 +26,8 @@ import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.TagMap;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.projection.ProjectionRegistry;
+import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPreset;
-import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetItem;
-import org.openstreetmap.josm.gui.tagging.presets.TaggingPresets;
-import org.openstreetmap.josm.gui.tagging.presets.items.KeyedItem;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Geometry;
 
@@ -102,7 +101,7 @@ public interface AdditionalInstructions {
                 return null;
             }
             Optional<Way> closestHighway = SnapToRoad.getClosestHighway((Node) primitive);
-            Collection<TaggingPreset> presets = TaggingPresets.getMatchingPresets(primitive);
+            Collection<TaggingPreset> presets = MainApplication.getTaggingPresets().getMatchingPresets(primitive);
             final String dirString = primitive.get("direction");
             if (closestHighway.isPresent() && !presets.isEmpty() && dirString != null
                 && PATTERN_FLOAT.matcher(dirString).matches()
@@ -110,16 +109,15 @@ public interface AdditionalInstructions {
                 TagMap tags = new TagMap();
 
                 for (TaggingPreset p : presets) {
-                    for (TaggingPresetItem item : p.data) {
-                        if (item instanceof KeyedItem) {
-                            KeyedItem keyedItem = (KeyedItem) item;
-                            if (!keyedItem.isKeyRequired() && primitive.hasKey(keyedItem.key)
-                                && !closestHighway.get().hasKey(keyedItem.key) && !"direction".equals(keyedItem.key)) {
-                                tags.put(keyedItem.key, primitive.get(keyedItem.key));
-                            }
+                    Set<String> nonRequiredKeys = p.matchingKeys(tags, false);
+                    nonRequiredKeys.removeAll(p.matchingKeys(tags, true));
+                    for (String key : nonRequiredKeys) {
+                        // only keys that are not required
+                        if (primitive.hasKey(key)
+                            && !closestHighway.get().hasKey(key) && !"direction".equals(key)) {
+                            tags.put(key, primitive.get(key));
                         }
                     }
-
                 }
                 return new ChangePropertyCommand(Collections.singleton(closestHighway.get()), tags);
             }

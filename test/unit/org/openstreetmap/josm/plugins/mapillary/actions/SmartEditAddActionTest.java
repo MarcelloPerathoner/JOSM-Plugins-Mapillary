@@ -8,16 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.GraphicsEnvironment;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import mockit.Invocation;
 import mockit.Mock;
@@ -27,17 +18,15 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openstreetmap.josm.TestUtils;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.Tag;
 import org.openstreetmap.josm.data.vector.VectorNode;
+import org.openstreetmap.josm.gui.ExtendedDialog;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
-import org.openstreetmap.josm.gui.tagging.presets.TaggingPreset;
-import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetItem;
-import org.openstreetmap.josm.gui.tagging.presets.items.Key;
+import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetDialog;
 import org.openstreetmap.josm.plugins.mapillary.data.mapillary.ObjectDetections;
 import org.openstreetmap.josm.plugins.mapillary.gui.layer.MapillaryLayer;
 import org.openstreetmap.josm.plugins.mapillary.gui.layer.PointObjectLayer;
@@ -118,16 +107,15 @@ class SmartEditAddActionTest {
     @ParameterizedTest
     @MethodSource("detectionsAreAdded")
     void actionPerformedOsmLayerUnlockedNoApply(ObjectDetections detection) {
+        TestUtils.assumeWorkingJMockit();
         node.put("value", detection.getKey());
         final SmartEditAddAction smartEditAddAction = new SmartEditAddAction(pointObjectLayer, node);
         final OsmDataLayer osmDataLayer = new OsmDataLayer(new DataSet(), "SmartEditAddActionTest", null);
         MainApplication.getLayerManager().addLayer(osmDataLayer);
-        TaggingPresetMock taggingPresetMock = new TaggingPresetMock();
-        taggingPresetMock.result = TaggingPreset.DIALOG_ANSWER_CANCEL;
-        taggingPresetMock.tags = TaggingPresetMock
-            .getTagOptions(detection.getTaggingPresets().stream().findFirst().orElse(null)).entrySet().stream()
-            .filter(entry -> !entry.getValue().isEmpty()).map(entry -> new Tag(entry.getKey(), entry.getValue().get(0)))
-            .collect(Collectors.toList());
+
+        TaggingPresetDialogMock taggingPresetDialogMock = new TaggingPresetDialogMock();
+        taggingPresetDialogMock.result = TaggingPresetDialog.DIALOG_ANSWER_CANCEL;
+
         smartEditAddAction.actionPerformed(null);
         assertAll(() -> assertFalse(node.isDeleted()), () -> assertFalse(node.isDisabled()),
             () -> assertTrue(node.isVisible()));
@@ -207,58 +195,33 @@ class SmartEditAddActionTest {
      * @return The osm data layer that will be applied to
      */
     private OsmDataLayer commonApply(ObjectDetections detection) {
+        TestUtils.assumeWorkingJMockit();
         final OsmDataLayer osmDataLayer = new OsmDataLayer(new DataSet(), "SmartEditAddActionTest", null);
         node.put("value", detection.getKey());
         MainApplication.getLayerManager().addLayer(osmDataLayer);
-        TaggingPresetMock taggingPresetMock = new TaggingPresetMock();
 
-        taggingPresetMock.result = TaggingPreset.DIALOG_ANSWER_APPLY;
-        taggingPresetMock.tags = TaggingPresetMock
-            .getTagOptions(detection.getTaggingPresets().stream().findFirst().orElse(null)).entrySet().stream()
-            .filter(entry -> !entry.getValue().isEmpty()).map(entry -> new Tag(entry.getKey(), entry.getValue().get(0)))
-            .collect(Collectors.toList());
+        TaggingPresetDialogMock taggingPresetDialogMock = new TaggingPresetDialogMock();
+        taggingPresetDialogMock.result = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
+
         return osmDataLayer;
     }
 
-    private static class TaggingPresetMock extends MockUp<TaggingPreset> {
-        int result;
-        List<Tag> tags = Collections.emptyList();
+    private static class TaggingPresetDialogMock extends MockUp<TaggingPresetDialog> {
+        int result = 666;
 
         @Mock
-        public int showDialog(Invocation invocation, Collection<OsmPrimitive> sel, boolean showNewRelation) {
-            if (!GraphicsEnvironment.isHeadless()) {
-                invocation.proceed();
-            }
-            return this.result;
-        }
-
-        @Mock
-        public List<Tag> getChangedTags(Invocation invocation) {
-            if (!GraphicsEnvironment.isHeadless()) {
+        public ExtendedDialog showDialog(Invocation invocation) {
+            if (!GraphicsEnvironment.isHeadless())
                 return invocation.proceed();
-            }
-            return this.tags;
+            return null; // who cares?
         }
 
-        /**
-         * Get the tag options for a preset
-         *
-         * @param taggingPreset The tagging preset to parse
-         * @return The options (currently only returns set values, may change in future)
-         */
-        @Nonnull
-        public static Map<String, List<String>> getTagOptions(@Nullable TaggingPreset taggingPreset) {
-            if (taggingPreset == null) {
-                return Collections.emptyMap();
-            }
-            Map<String, List<String>> tagMap = new HashMap<>(taggingPreset.data.size());
-            for (TaggingPresetItem item : taggingPreset.data) {
-                // For now, just do the items with known values
-                if (item instanceof Key) {
-                    tagMap.put(((Key) item).key, Collections.singletonList(((Key) item).value));
-                }
-            }
-            return tagMap;
+        @Mock
+        public void setupDialog() {}
+
+        @Mock
+        public int getValue() {
+            return result;
         }
     }
 }

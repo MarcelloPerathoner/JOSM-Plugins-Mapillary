@@ -7,21 +7,19 @@ import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
-import java.util.stream.Stream;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import org.openstreetmap.josm.actions.JosmAction;
-import org.openstreetmap.josm.command.AddPrimitivesCommand;
 import org.openstreetmap.josm.command.Command;
+import org.openstreetmap.josm.command.SequenceCommand;
 import org.openstreetmap.josm.data.UndoRedoHandler;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.INode;
@@ -29,14 +27,13 @@ import org.openstreetmap.josm.data.osm.IPrimitive;
 import org.openstreetmap.josm.data.osm.IWay;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.Tag;
+import org.openstreetmap.josm.data.osm.PrimitiveData;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.vector.VectorPrimitive;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPreset;
-import org.openstreetmap.josm.gui.tagging.presets.items.KeyedItem;
-import org.openstreetmap.josm.plugins.mapillary.command.AddMapillaryObjectCommand;
-import org.openstreetmap.josm.plugins.mapillary.command.DeleteCommand;
+import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetDialog;
+import org.openstreetmap.josm.plugins.mapillary.command.SmartEditAddCommand;
 import org.openstreetmap.josm.plugins.mapillary.data.mapillary.AdditionalInstructions;
 import org.openstreetmap.josm.plugins.mapillary.data.mapillary.ObjectDetections;
 import org.openstreetmap.josm.plugins.mapillary.gui.layer.MapillaryLayer;
@@ -50,7 +47,7 @@ import org.openstreetmap.josm.tools.ImageProvider;
  * @author Taylor Smock
  */
 public class SmartEditAddAction extends JosmAction {
-    private final transient IPrimitive mapillaryObject;
+    private final transient VectorPrimitive mapillaryObject;
     private final transient PointObjectLayer pointObjectLayer;
     private final ObjectDetections detection;
 
@@ -60,7 +57,7 @@ public class SmartEditAddAction extends JosmAction {
      * @param pointObjectLayer The point object layer we are adding data from
      * @param primitive The primitive to be added (it should be in/on the layer)
      */
-    public SmartEditAddAction(final PointObjectLayer pointObjectLayer, final IPrimitive primitive) {
+    public SmartEditAddAction(final PointObjectLayer pointObjectLayer, final VectorPrimitive primitive) {
         super(tr("Add"), new ImageProvider("dialogs", "add"), tr("Add Map Feature to OSM"), null, false, null, false);
         Objects.requireNonNull(pointObjectLayer);
         Objects.requireNonNull(primitive);
@@ -72,6 +69,7 @@ public class SmartEditAddAction extends JosmAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        this.pointObjectLayer.hideWindow(mapillaryObject);
         addMapillaryPrimitiveToOsm(this.mapillaryObject, this.detection);
         this.updateEnabledState();
     }
@@ -87,127 +85,90 @@ public class SmartEditAddAction extends JosmAction {
      * @param mapillaryObject The primitive to add to OSM
      * @param detection The detections for the primitive
      */
-    void addMapillaryPrimitiveToOsm(final IPrimitive mapillaryObject, final ObjectDetections detection) {
-        this.pointObjectLayer.hideWindow(mapillaryObject);
+    void addMapillaryPrimitiveToOsm(final VectorPrimitive mapillaryObject, final ObjectDetections detection) {
         final Collection<TaggingPreset> presets = detection.getTaggingPresets();
         final DataSet dataSet = MainApplication.getLayerManager().getActiveDataSet();
-        if (dataSet != null && !dataSet.isLocked() && presets.size() == 1) {
-            final List<OsmPrimitive> toAdd = generateToAdd();
-            if (toAdd.isEmpty()) {
-                return;
-            }
+        final List<OsmPrimitive> toAdd = generateToAdd();
+        if (dataSet != null && !dataSet.isLocked() && presets.size() == 1 && !toAdd.isEmpty()) {
             final TaggingPreset preset = presets.iterator().next();
             final OsmPrimitive basePrimitive = toAdd.get(0);
-            final Pattern number = Pattern.compile("\\d{0,3}(\\.\\d+)?");
-            final Optional<Tag> direction;
-            if (getPresetKeys(preset).anyMatch("direction"::equals)) {
-                direction = Optional
-                    .ofNullable(
-                        basePrimitive.get(MapillaryMapFeatureUtils.MapFeatureProperties.ALIGNED_DIRECTION.toString()))
-                    .filter(str -> number.matcher(str).matches()).map(Double::valueOf).map(Math::round)
-                    .map(dir -> new Tag("direction", Long.toString(dir)));
-            } else {
-                direction = Optional.empty();
+            String direction = null;
+            if (preset.getAllKeys().contains("direction")) {
+                try {
+                    String value = basePrimitive.get(MapillaryMapFeatureUtils.MapFeatureProperties.ALIGNED_DIRECTION.toString());
+                    direction = Long.toString(Math.round(Double.valueOf(value)));
+                } catch (NumberFormatException | NullPointerException e) {
+                    direction = null; // make errorprone happy
+                }
             }
-            basePrimitive.removeAll();
-            detection.getOsmKeys().forEach(basePrimitive::put);
 
-            final AddPrimitivesCommand add = new AddPrimitivesCommand(
-                toAdd.stream().map(OsmPrimitive::save).collect(Collectors.toList()), dataSet);
-            UndoRedoHandler.getInstance().add(add);
-            final OsmPrimitive addedPrimitive = dataSet.getPrimitiveById(basePrimitive.getPrimitiveId());
-            final int[] tSelection = new int[1];
-            final Command[] tCommand = new Command[1];
-            this.pointObjectLayer.hideAdditionalActionsWindow(() -> {
-                direction.ifPresent(addedPrimitive::put);
-                tSelection[0] = preset.showDialog(Collections.singleton(addedPrimitive), false);
-                direction.map(Tag::getKey).ifPresent(addedPrimitive::remove);
-                final List<Tag> changedTags = new ArrayList<>(preset.getChangedTags());
-                direction.ifPresent(changedTags::add);
-                tCommand[0] = TaggingPreset.createCommand(Collections.singleton(addedPrimitive), changedTags);
-            });
-            final int userSelection = tSelection[0];
-            // Closing the window returns 0. Not in the TaggingPreset public answers at this time.
-            if ((userSelection == 0 || userSelection == TaggingPreset.DIALOG_ANSWER_CANCEL)
-                && UndoRedoHandler.getInstance().hasUndoCommands()) {
-                // Technically, it would be easier to do one undo, but this avoids corner cases
-                // where a user makes some modifications while the preset window is open.
-                List<Command> undoCommands = UndoRedoHandler.getInstance().getUndoCommands();
-                int index = undoCommands.size() - undoCommands.indexOf(add);
-                UndoRedoHandler.getInstance().undo(index);
-                return;
-            } else if (!addedPrimitive.isTagged()) {
-                return;
+            // the tags we want added to the first primitive
+            Map<String, String> firstTags = getMapillaryTags();
+            firstTags.putAll(detection.getOsmKeys());
+            if (direction != null)
+                firstTags.put("direction", direction);
+
+            // Show the dialog.  Usually we would pass a data handler to the dialog but
+            // since our case is special (there's no primitive yet in the dataset for
+            // the preset to work upon) it's maybe easier this way.
+            TaggingPresetDialog dialog = preset.prepareDialog(null, null);
+            if (dialog != null) {
+                dialog.fill(firstTags);
+                dialog.showDialog();
+                if (dialog.getValue() == TaggingPresetDialog.DIALOG_ANSWER_APPLY) {
+                    // since we passed no handler to the dialog we must handle it ourselves
+                    List<PrimitiveData> add = toAdd.stream().map(OsmPrimitive::save).collect(Collectors.toList());
+                    firstTags.putAll(dialog.getPresetInstance().getChangedTags());
+                    add.get(0).putAll(firstTags);
+
+                    List<Command> commands = new ArrayList<>();
+                    commands.add(new SmartEditAddCommand(mapillaryObject, add, dataSet));
+                    commands.addAll(additionalCommands(basePrimitive));
+                    String title = commands.get(0).getDescriptionText();
+                    UndoRedoHandler.getInstance().add(SequenceCommand.wrapIfNeeded(title, commands));
+                }
             }
-            addMapillaryTags(addedPrimitive);
-
-            generateCommands(addedPrimitive, tCommand[0]);
-            this.pointObjectLayer.getData().setSelected(this.pointObjectLayer.getData().getSelected().stream()
-                .filter(n -> !n.equals(this.mapillaryObject)).collect(Collectors.toList()));
         }
     }
 
     /**
-     * Get the preset keys
+     * Generate additional commands
      *
-     * @param preset The preset to get keys for
-     * @return A stream of keys for the preset
+     * @param addedPrimitive The primitive added to the OSM dataset
      */
-    private static Stream<String> getPresetKeys(TaggingPreset preset) {
-        return preset.data.stream().filter(KeyedItem.class::isInstance).map(KeyedItem.class::cast)
-            .map(item -> item.key);
-    }
+    private List<Command> additionalCommands(@Nonnull final OsmPrimitive addedPrimitive) {
+        List<Command> commands = new ArrayList<>();
 
-    /**
-     * Generate all commands and add them to the UndoRedo stack
-     *
-     * @param basePrimitive The base primitive
-     * @param updateTagsCommand The tag add command
-     */
-    private void generateCommands(@Nonnull final OsmPrimitive basePrimitive,
-        @Nullable final Command updateTagsCommand) {
-        DeleteCommand<?, ?, ?, ?, ?> deleteOriginal;
-        if (mapillaryObject instanceof VectorPrimitive) {
-            deleteOriginal = new DeleteCommand<>(((VectorPrimitive) mapillaryObject).getDataSet(),
-                (VectorPrimitive) mapillaryObject);
-        } else {
-            throw new IllegalArgumentException(
-                "Unknown primitive type for mapillaryObject: " + mapillaryObject.getClass().getName());
-        }
-        UndoRedoHandler.getInstance().add(new AddMapillaryObjectCommand(deleteOriginal, updateTagsCommand));
-        // The updateTagsCommand is only generated when there are not "static" tags (i.e., emergency=fire_hydrant does
-        // not count, but emergency=fire_hydrant + colour=yellow does).
-        if (updateTagsCommand != null) {
-            UndoRedoHandler.getInstance().add(updateTagsCommand);
-        }
         final AdditionalInstructions additionalInstructions = detection.getAdditionalInstructions();
         if (additionalInstructions != null) {
-            final Command additionalCommand = additionalInstructions.apply(basePrimitive);
+            final Command additionalCommand = additionalInstructions.apply(addedPrimitive);
             if (additionalCommand != null) {
-                UndoRedoHandler.getInstance().add(additionalCommand);
+                commands.add(additionalCommand);
             }
         }
+        return commands;
     }
 
     /**
-     * Add mapillary tags to a primitive
+     * Returns the mapillary:* tags
      *
-     * @param basePrimitive The primitive to add tags to
+     * @return the mapillary tags
      */
-    private void addMapillaryTags(final IPrimitive basePrimitive) {
+    private Map<String, String> getMapillaryTags() {
+        Map<String, String> map = new HashMap<>();
         long[] imageIds = MapillaryMapFeatureUtils.getImageIds(mapillaryObject);
         if (imageIds.length > 0) {
             final OptionalLong imageId = MapillaryLayer.getInstance().getData().getSelectedNodes().stream()
                 .mapToLong(IPrimitive::getUniqueId).distinct()
                 .filter(i -> LongStream.of(imageIds).anyMatch(id -> id == i)).findFirst();
             if (imageId.isPresent()) {
-                basePrimitive.put("mapillary:image", Long.toString(imageId.getAsLong()));
+                map.put("mapillary:image", Long.toString(imageId.getAsLong()));
             }
         }
         if (mapillaryObject.getId() != 0) {
-            basePrimitive.put("mapillary:map_feature", Long.toString(mapillaryObject.getId()));
+            map.put("mapillary:map_feature", Long.toString(mapillaryObject.getId()));
         }
-
+        return map;
     }
 
     /**

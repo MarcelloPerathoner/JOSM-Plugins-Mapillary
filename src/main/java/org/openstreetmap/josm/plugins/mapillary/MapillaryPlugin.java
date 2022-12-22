@@ -8,7 +8,6 @@ import java.util.List;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MainMenu;
@@ -41,7 +40,6 @@ import org.openstreetmap.josm.plugins.mapillary.oauth.MapillaryUser;
 import org.openstreetmap.josm.plugins.mapillary.spi.preferences.MapillaryConfig;
 import org.openstreetmap.josm.plugins.mapillary.spi.preferences.MapillaryUrls;
 import org.openstreetmap.josm.plugins.mapillary.utils.MapillaryProperties;
-import org.openstreetmap.josm.plugins.mapillary.utils.ReflectionUtils;
 import org.openstreetmap.josm.plugins.mapillary.utils.SecurityManagerUtils;
 import org.openstreetmap.josm.tools.Destroyable;
 import org.openstreetmap.josm.tools.ImageProvider;
@@ -144,12 +142,8 @@ public class MapillaryPlugin extends Plugin implements Destroyable {
             newFrame.conflictDialog.getToggleAction().actionPerformed(null);
 
             PropertiesDialog properties = newFrame.propertiesDialog;
-
-            ReflectionUtils.getDeclaredField(PropertiesDialog.class, "tagMenu", properties, JPopupMenu.class)
-                .ifPresent(tagMenu -> {
-                    popupHandler = new MapillaryKeyListener(properties, tagMenu);
-                    this.destroyables.add(popupHandler);
-                });
+            popupHandler = new MapillaryKeyListener(properties, properties.getTagMenu());
+            this.destroyables.add(popupHandler);
 
             this.dataMouseListener = new DataMouseListener();
             this.destroyables.add(this.dataMouseListener);

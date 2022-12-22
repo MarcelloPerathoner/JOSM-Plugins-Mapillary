@@ -28,7 +28,10 @@ plugins {
 }
 
 repositories {
-  mavenCentral()
+    mavenCentral()
+    maven {
+        url = uri("https://josm.openstreetmap.de/nexus/content/repositories/releases/")
+    }
 }
 
 // Set up ErrorProne
@@ -60,19 +63,21 @@ val versions = mapOf(
   // Errorprone 2.11 requires Java 11+
   "errorprone" to if (JavaVersion.current() >= JavaVersion.VERSION_11) "2.15.0" else "2.10.0",
   "jdatepicker" to "1.3.4",
-  "jmockit" to "1.49",
+  "jmockit" to "1.49.a",
   "junit" to "5.9.0",
   "pmd" to "6.42.0",
   "spotbugs" to "4.7.1",
   "wiremock" to "2.33.2"
 )
 
+val home = System.getProperty("user.home")
+
 dependencies {
   if (!JavaVersion.current().isJava9Compatible) {
     errorproneJavac("com.google.errorprone:javac:9+181-r4173-1")
   }
   errorprone("com.google.errorprone:error_prone_core:${versions["errorprone"]}")
-  testImplementation ("org.openstreetmap.josm:josm-unittest:SNAPSHOT"){ isChanging = true }
+  // testImplementation("org.openstreetmap.josm:josm-unittest:SNAPSHOT"){ isChanging = true }
   testImplementation("com.github.tomakehurst:wiremock-jre8:${versions["wiremock"]}")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:${versions["junit"]}")
@@ -86,17 +91,43 @@ dependencies {
   testImplementation("com.github.spotbugs:spotbugs-annotations:${versions["spotbugs"]}")
   implementation("org.jdatepicker:jdatepicker:${versions["jdatepicker"]}")
   packIntoJar("org.jdatepicker:jdatepicker:${versions["jdatepicker"]}")
+
+    implementation(files("$home/prj/josm/build/libs/josm.jar"))
+    //implementation(files("$home/prj/josm/build/libs/josm-sources.jar"))
+    testImplementation(files("$home/prj/josm/build/classes/java/test"))
+    // implementation(files("$home/prj/josm/src"))
+    // implementation(files("$home/prj/josm/build/classes/java/main"))
+}
+
+project.afterEvaluate {
+    // That pig-headed josm plugin won't let me use my own josm-custom.jar. Now I'll
+    // teach him!
+    val mainConfiguration = project.configurations.getByName("implementation")
+    mainConfiguration.dependencies.forEach {
+        logger.lifecycle(it.getName())
+        if (it.getName() == "josm" && it.getVersion() == "18531") {
+            mainConfiguration.dependencies.remove(it)
+            logger.lifecycle("poof!")
+        }
+    }
+}
+
+tasks.register<Copy>("install") {
+    description = "Install the plugin locally."
+    dependsOn("dist")
+    from(tasks.named("dist"))
+    into("$home/.local/share/JOSM/plugins")
 }
 
 sourceSets {
-  test {
-    java {
-      setSrcDirs(listOf("test/unit"))
+    test {
+        java {
+            setSrcDirs(listOf("test/unit"))
+        }
+        resources {
+            setSrcDirs(listOf("test/data"))
+        }
     }
-    resources {
-      setSrcDirs(listOf("test/data"))
-    }
-  }
 }
 
 val md2html by tasks.registering(MarkdownToHtml::class) {
@@ -270,7 +301,7 @@ tasks.withType(SpotBugsTask::class) {
 
 // JaCoCo config
 jacoco {
-  toolVersion = "0.8.7"
+  toolVersion = "0.8.8"
 }
 
 tasks.jacocoTestReport {

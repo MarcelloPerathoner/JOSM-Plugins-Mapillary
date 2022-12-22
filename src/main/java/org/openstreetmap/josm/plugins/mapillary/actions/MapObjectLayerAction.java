@@ -34,7 +34,7 @@ public class MapObjectLayerAction extends JosmAction {
             // See {@link LayerManager#addLayer(org.openstreetmap.josm.gui.layer.Layer, boolean)}.
             synchronized (MainApplication.getLayerManager()) {
                 if (MainApplication.getLayerManager().getActiveDataSet() != null
-                    && MainApplication.getLayerManager().getLayersOfType(PointObjectLayer.class).parallelStream()
+                    && MainApplication.getLayerManager().getLayersOfType(PointObjectLayer.class).stream()
                         .noneMatch(p -> MapillaryKeys.MAPILLARY_TRAFFIC_SIGNS.equals(p.getInfo()))) {
                     MainApplication.getLayerManager()
                         .addLayer(new PointObjectLayer(MapillaryKeys.MAPILLARY_TRAFFIC_SIGNS), false);

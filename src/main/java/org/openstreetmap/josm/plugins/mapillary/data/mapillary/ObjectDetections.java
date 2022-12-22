@@ -28,9 +28,9 @@ import org.openstreetmap.josm.data.osm.Tag;
 import org.openstreetmap.josm.data.osm.TagMap;
 import org.openstreetmap.josm.gui.mappaint.MapPaintStyles;
 import org.openstreetmap.josm.gui.mappaint.mapcss.MapCSSStyleSource;
+import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPreset;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetType;
-import org.openstreetmap.josm.gui.tagging.presets.TaggingPresets;
 import org.openstreetmap.josm.plugins.mapillary.gui.layer.PointObjectLayer;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.JosmRuntimeException;
@@ -225,7 +225,7 @@ public final class ObjectDetections {
      */
     private void updateMappingPresets() {
         if (!this.osmKey.isEmpty()) {
-            this.presets = TaggingPresets.getMatchingPresets(this.taggingPresetType, this.osmKey, false)
+            this.presets = MainApplication.getTaggingPresets().getMatchingPresets(this.taggingPresetType, this.osmKey, false)
                 .toArray(this.presets);
         } else {
             this.presets = new TaggingPreset[0];

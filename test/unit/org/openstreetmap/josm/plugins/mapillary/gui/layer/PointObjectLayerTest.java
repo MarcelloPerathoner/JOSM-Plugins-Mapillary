@@ -57,8 +57,8 @@ class PointObjectLayerTest {
     @Test
     void testGetIcon() {
         Icon i = instance.getIcon();
-        assertEquals(ImageSizes.LAYER.getAdjustedHeight(), i.getIconHeight());
-        assertEquals(ImageSizes.LAYER.getAdjustedWidth(), i.getIconWidth());
+        assertEquals(ImageSizes.LAYER.getHeight(), i.getIconHeight());
+        assertEquals(ImageSizes.LAYER.getWidth(), i.getIconWidth());
     }
 
     @Test

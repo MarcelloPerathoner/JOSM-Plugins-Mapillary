@@ -124,13 +124,13 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
     private static final String IMAGE_SPRITE_DIR = "josm-ca";
     /** The default sprite for a Mapillary image */
     private static final ImageIcon DEFAULT_SPRITE = new ImageProvider(IMAGE_SPRITE_DIR, "default-ca")
-        .setMaxWidth(ImageProvider.ImageSizes.MAP.getAdjustedHeight()).get();
+        .setMaxWidth(ImageProvider.ImageSizes.MAP.getHeight()).get();
     /** The sprite to use for the active Mapillary sequence */
     private static final ImageIcon ACTIVE_SEQUENCE_SPRITE = new ImageProvider(IMAGE_SPRITE_DIR, "sequence-ca")
-        .setMaxWidth(ImageProvider.ImageSizes.MAP.getAdjustedHeight()).get();
+        .setMaxWidth(ImageProvider.ImageSizes.MAP.getHeight()).get();
     /** The sprite to use for the currently selected image */
     private static final ImageIcon SELECTED_IMAGE = new ImageProvider(IMAGE_SPRITE_DIR, "current-ca")
-        .setMaxWidth(ImageProvider.ImageSizes.MAP.getAdjustedHeight()).get();
+        .setMaxWidth(ImageProvider.ImageSizes.MAP.getHeight()).get();
 
     /** The color scale used when drawing using velocity */
     private final ColorScale velocityScale = ColorScale.createHSBScale(256);
@@ -599,7 +599,16 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
             g.setStroke(new BasicStroke(2));
             g.drawOval(-IMG_MARKER_RADIUS, -IMG_MARKER_RADIUS, 2 * IMG_MARKER_RADIUS, 2 * IMG_MARKER_RADIUS);
         }
-    }
+        // TODO get the following working
+        /*
+         * if (img instanceof Detections && !((Detections) img).getDetections().isEmpty()) {
+         * TRAFFIC_SIGN_SIZE = (int) (ImageProvider.ImageSizes.MAP.getWidth() / 1.5);
+         * YIELD_SIGN = new ImageProvider(IMAGE_SPRITE_DIR,
+         * "sign-detection").setMaxSize(TRAFFIC_SIGN_SIZE).get().getImage()
+         * g.drawImage(YIELD_SIGN, (int) (p.getX() - TRAFFIC_SIGN_SIZE / 3d), (int) (p.getY() - TRAFFIC_SIGN_SIZE / 3d),
+         * null);
+         * }
+         */
 
     private static void paintOffsetLine(Graphics2D g, Point p, ILatLon drawnCoordinates, ILatLon img, boolean offset) {
         // Draw a line to the original location
