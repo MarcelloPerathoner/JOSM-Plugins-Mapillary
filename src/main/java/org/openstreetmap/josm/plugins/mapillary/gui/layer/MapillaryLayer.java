@@ -604,6 +604,7 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
          * null);
          * }
          */
+    }
 
     private static void paintOffsetLine(Graphics2D g, Point p, ILatLon drawnCoordinates, ILatLon img, boolean offset) {
         // Draw a line to the original location
@@ -794,22 +795,11 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         }
         this.image = image;
         this.invalidate();
-        if (ImageViewerDialog.hasInstance()) {
-            if (image == null) {
-                GuiHelper.runInEDT(() -> fireImageChanged(null, Collections.emptyList()));
-            } else {
-                MapillaryImageEntry entry = MapillaryImageEntry.getCachedEntry(image);
-                IImageEntry<?> currentEntry = ImageViewerDialog.getCurrentImage();
-                if (Objects.equals(entry, currentEntry)) {
-                    ImageViewerDialog.getInstance().displayImages(Collections.singletonList(entry));
-                } else {
-                    IImageEntry<?> old = ImageViewerDialog.getCurrentImage();
-                    GuiHelper.runInEDT(() -> ImageViewerDialog.getInstance().displayImage(entry));
-                    MainApplication.worker.execute(() -> this.imageChangeListeners.fireEvent(f -> f.imageChanged(this,
-                        old instanceof MapillaryImageEntry ? Collections.singletonList(old) : Collections.emptyList(),
-                        Collections.singletonList(entry))));
-                }
-            }
+        if (image == null) {
+            GuiHelper.runInEDT(() -> fireImageChanged(null, Collections.emptyList()));
+        } else {
+            MapillaryImageEntry entry = MapillaryImageEntry.getCachedEntry(image);
+            fireImageChanged(null, Collections.singletonList(entry));
         }
     }
 
