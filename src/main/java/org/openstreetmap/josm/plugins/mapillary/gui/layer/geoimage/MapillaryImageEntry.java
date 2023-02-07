@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -150,21 +151,6 @@ public class MapillaryImageEntry
             throw new IllegalStateException("Image not downloaded");
         }
         this.image = image;
-    }
-
-    /**
-     * Clone another entry. Mostly useful to avoid != checks. See {@link ImageViewerDialog#displayImages(List)} for a
-     * specific location.
-     *
-     * @param other The entry to clone
-     */
-    MapillaryImageEntry(final MapillaryImageEntry other) {
-        this.image = other.image;
-        this.imageDetections.addAll(other.imageDetections);
-        this.layeredImage = other.layeredImage;
-        this.originalImage = other.originalImage;
-        this.fullImage = other.fullImage;
-        this.exifOrientation = other.exifOrientation;
     }
 
     @Override
@@ -316,7 +302,6 @@ public class MapillaryImageEntry
     }
 
     private BufferedImageCacheEntry setFullImage(final BufferedImageCacheEntry entry) {
-        Logging.info("setFullImage");
         final byte[] content = entry.getContent();
         // Load image
         try {
@@ -588,18 +573,15 @@ public class MapillaryImageEntry
     }
 
     private void updateImageEntry() {
-        // Clone this entry. Needed to ensure that the image display refreshes.
-        final MapillaryImageEntry temporaryImageEntry = new MapillaryImageEntry(this);
+        if (!MapillaryLayer.getInstance().getData().getSelectedNodes().contains(this.image)) {
+            // update came too late
+            return;
+        }
         // Ensure that detections are repainted
         if (this.layeredImage != null) {
             this.layeredImage.clear();
         }
-        if (this.equals(ImageViewerDialog.getCurrentImage())) {
-            GuiHelper.runInEDT(() -> {
-                ImageViewerDialog.getInstance().displayImage(temporaryImageEntry);
-                ImageViewerDialog.getInstance().displayImage(this);
-            });
-        }
+        GuiHelper.runInEDT(() -> MapillaryLayer.getInstance().fireImageChanged(null, Collections.singletonList(this)));
     }
 
     // FIXME copied from ImageEntry

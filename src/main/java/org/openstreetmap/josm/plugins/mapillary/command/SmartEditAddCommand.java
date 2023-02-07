@@ -33,15 +33,15 @@ public class SmartEditAddCommand extends AddPrimitivesCommand {
      * After execution the first primitive in data is selected.
      *
      * @param vectorPrimitive the vector primitive to remove
-     * @param osmPrimitives the primitivedata of the osm primitives to add
+     * @param osmPrimitivesData the primitivedata of the osm primitives to add
      * @param osmDataSet the dataSet of the osm primitives
      */
     public SmartEditAddCommand(VectorPrimitive vectorPrimitive,
-            List<PrimitiveData> osmPrimitives, DataSet osmDataSet) {
-        super(osmPrimitives, osmPrimitives.subList(0, 1), osmDataSet);
+            List<PrimitiveData> osmPrimitivesData, DataSet osmDataSet) {
+        super(osmPrimitivesData, osmPrimitivesData.subList(0, 1), osmDataSet);
         this.vectorPrimitive = vectorPrimitive;
         this.vectorDataSet = vectorPrimitive.getDataSet();
-        int size = osmPrimitives.size();
+        int size = osmPrimitivesData.size();
         title = trn(
             "Mapillary Smart Edit: Added {0} object",
             "Mapillary Smart Edit: Added {0} objects", size, size

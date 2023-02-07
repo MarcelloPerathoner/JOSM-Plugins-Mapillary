@@ -284,11 +284,6 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
     public synchronized void destroy() {
         if (!destroyed) {
             this.getData().clearSelection();
-            if (MainApplication.getMap() != null
-                && MainApplication.getMap().getToggleDialog(ImageViewerDialog.class) != null
-                && ImageViewerDialog.getCurrentImage() instanceof MapillaryImageEntry) {
-                ImageViewerDialog.getInstance().displayImage(null);
-            }
             UploadAction.unregisterUploadHook(this);
             super.destroy();
         }
@@ -788,6 +783,10 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         this.tileListeners.addListener(tileListener);
     }
 
+    public void fireImageChanged(List<? extends IImageEntry<?>> oldImages, List<? extends IImageEntry<?>> newImages) {
+        imageChangeListeners.fireEvent(f -> f.imageChanged(this, oldImages, newImages));
+    }
+
     public void setCurrentImage(final MapillaryNode image) {
         this.setImageViewed(image);
         if (image != null && image.isReferredByWays(0)) {
@@ -797,7 +796,7 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         this.invalidate();
         if (ImageViewerDialog.hasInstance()) {
             if (image == null) {
-                GuiHelper.runInEDT(() -> ImageViewerDialog.getInstance().displayImage(null));
+                GuiHelper.runInEDT(() -> fireImageChanged(null, Collections.emptyList()));
             } else {
                 MapillaryImageEntry entry = MapillaryImageEntry.getCachedEntry(image);
                 IImageEntry<?> currentEntry = ImageViewerDialog.getCurrentImage();

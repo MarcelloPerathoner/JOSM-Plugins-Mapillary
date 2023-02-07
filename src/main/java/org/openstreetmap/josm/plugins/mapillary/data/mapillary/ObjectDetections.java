@@ -249,8 +249,8 @@ public final class ObjectDetections {
      *
      * @return A list of tagging presets
      */
-    public Collection<TaggingPreset> getTaggingPresets() {
-        return Collections.unmodifiableCollection(Arrays.asList(this.presets));
+    public List<TaggingPreset> getTaggingPresets() {
+        return Collections.unmodifiableList(Arrays.asList(this.presets));
     }
 
     /**

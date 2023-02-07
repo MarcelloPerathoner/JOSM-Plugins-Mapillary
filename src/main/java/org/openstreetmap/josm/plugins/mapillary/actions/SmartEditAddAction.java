@@ -5,7 +5,6 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -81,49 +80,51 @@ public class SmartEditAddAction extends JosmAction {
 
     /**
      * Add a Mapillary Object Detection Primitive to OSM
+     * <p>
+     * This function first shows a preset dialog to the user pre-filled with the
+     * detected values.  On apply it adds an osm primitive to the OSM data layer and
+     * removes the vector primitive from the mapillary layer.  This operation can be
+     * undone.
      *
-     * @param mapillaryObject The primitive to add to OSM
-     * @param detection The detections for the primitive
+     * @param mapillaryObject The vector primitive to use as prototype
+     * @param detection The detections for the vector primitive
      */
     void addMapillaryPrimitiveToOsm(final VectorPrimitive mapillaryObject, final ObjectDetections detection) {
-        final Collection<TaggingPreset> presets = detection.getTaggingPresets();
         final DataSet dataSet = MainApplication.getLayerManager().getActiveDataSet();
+        final List<TaggingPreset> presets = detection.getTaggingPresets();
         final List<OsmPrimitive> toAdd = generateToAdd();
         if (dataSet != null && !dataSet.isLocked() && presets.size() == 1 && !toAdd.isEmpty()) {
-            final TaggingPreset preset = presets.iterator().next();
-            final OsmPrimitive basePrimitive = toAdd.get(0);
-            String direction = null;
-            if (preset.getAllKeys().contains("direction")) {
-                try {
-                    String value = basePrimitive.get(MapillaryMapFeatureUtils.MapFeatureProperties.ALIGNED_DIRECTION.toString());
-                    direction = Long.toString(Math.round(Double.valueOf(value)));
-                } catch (NumberFormatException | NullPointerException e) {
-                    direction = null; // make errorprone happy
-                }
-            }
+            final TaggingPreset preset = presets.get(0);
+            final OsmPrimitive firstPrimitive = toAdd.get(0);
 
             // the tags we want added to the first primitive
             Map<String, String> firstTags = getMapillaryTags();
             firstTags.putAll(detection.getOsmKeys());
-            if (direction != null)
-                firstTags.put("direction", direction);
+            if (preset.getAllKeys().contains("direction")) {
+                try {
+                    String direction = firstPrimitive.get(MapillaryMapFeatureUtils.MapFeatureProperties.ALIGNED_DIRECTION.toString());
+                    firstTags.put("direction", Long.toString(Math.round(Double.valueOf(direction))));
+                } catch (NumberFormatException | NullPointerException e) {
+                    // make errorprone happy
+                }
+            }
 
             // Show the dialog.  Usually we would pass a data handler to the dialog but
             // since our case is special (there's no primitive yet in the dataset for
             // the preset to work upon) it's maybe easier this way.
             TaggingPresetDialog dialog = preset.prepareDialog(null, null);
             if (dialog != null) {
-                dialog.fill(firstTags);
-                dialog.showDialog();
-                if (dialog.getValue() == TaggingPresetDialog.DIALOG_ANSWER_APPLY) {
+                dialog.getPresetInstance().fillIn(firstTags);
+                dialog.setVisible(true);
+                if (dialog.answer == TaggingPresetDialog.DIALOG_ANSWER_APPLY) {
                     // since we passed no handler to the dialog we must handle it ourselves
-                    List<PrimitiveData> add = toAdd.stream().map(OsmPrimitive::save).collect(Collectors.toList());
                     firstTags.putAll(dialog.getPresetInstance().getChangedTags());
-                    add.get(0).putAll(firstTags);
+                    List<PrimitiveData> add = toAdd.stream().map(OsmPrimitive::save).collect(Collectors.toList());
+                    add.get(0).setKeys(firstTags);
 
                     List<Command> commands = new ArrayList<>();
                     commands.add(new SmartEditAddCommand(mapillaryObject, add, dataSet));
-                    commands.addAll(additionalCommands(basePrimitive));
+                    commands.addAll(additionalCommands(firstPrimitive));
                     String title = commands.get(0).getDescriptionText();
                     UndoRedoHandler.getInstance().add(SequenceCommand.wrapIfNeeded(title, commands));
                 }

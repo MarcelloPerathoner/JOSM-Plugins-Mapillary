@@ -92,11 +92,10 @@ dependencies {
   implementation("org.jdatepicker:jdatepicker:${versions["jdatepicker"]}")
   packIntoJar("org.jdatepicker:jdatepicker:${versions["jdatepicker"]}")
 
-    implementation(files("$home/prj/josm/build/libs/josm.jar"))
-    //implementation(files("$home/prj/josm/build/libs/josm-sources.jar"))
-    testImplementation(files("$home/prj/josm/build/classes/java/test"))
-    // implementation(files("$home/prj/josm/src"))
-    // implementation(files("$home/prj/josm/build/classes/java/main"))
+  implementation(files("$home/prj/josm/build/libs/josm.jar"))
+  implementation(files("$home/prj/josm/build/libs/josm-sources.jar"))
+  // implementation(files("$home/prj/josm/build/classes/java/main"))
+  testImplementation(files("$home/prj/josm/build/classes/java/test"))
 }
 
 project.afterEvaluate {
@@ -105,7 +104,7 @@ project.afterEvaluate {
     val mainConfiguration = project.configurations.getByName("implementation")
     mainConfiguration.dependencies.forEach {
         logger.lifecycle(it.getName())
-        if (it.getName() == "josm" && it.getVersion() == "18531") {
+        if (it.getName() == "josm" && it.getVersion() == "18613") {
             mainConfiguration.dependencies.remove(it)
             logger.lifecycle("poof!")
         }
