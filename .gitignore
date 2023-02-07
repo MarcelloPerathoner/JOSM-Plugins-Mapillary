@@ -29,3 +29,9 @@
 # Private key files
 /src/main/resources/mapillary_api_keys.json
 
+.settings
+.vscode
+env
+mapillary_api_keys.json
+
+
