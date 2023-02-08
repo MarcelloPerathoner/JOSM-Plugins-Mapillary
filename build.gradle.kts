@@ -8,6 +8,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.openstreetmap.josm.gradle.plugin.task.MarkdownToHtml
 import java.net.URL
+import java.io.FileOutputStream
 import kotlin.reflect.full.starProjectedType
 
 plugins {
@@ -55,8 +56,8 @@ tasks.withType(JavaCompile::class).configureEach {
   }
 }
 
-java.sourceCompatibility = JavaVersion.VERSION_1_8
-java.targetCompatibility = JavaVersion.VERSION_1_8
+// java.sourceCompatibility = JavaVersion.VERSION_1_8
+// java.targetCompatibility = JavaVersion.VERSION_1_8
 
 val versions = mapOf(
   "awaitility" to "4.2.0",
@@ -93,18 +94,20 @@ dependencies {
   packIntoJar("org.jdatepicker:jdatepicker:${versions["jdatepicker"]}")
 
   implementation(files("$home/prj/josm/build/libs/josm.jar"))
+  implementation(files("libs/josm.jar"))
   implementation(files("$home/prj/josm/build/libs/josm-sources.jar"))
   // implementation(files("$home/prj/josm/build/classes/java/main"))
   testImplementation(files("$home/prj/josm/build/classes/java/test"))
+  testImplementation(files("$home/prj/josm/test/unit"))
 }
 
 project.afterEvaluate {
-    // That pig-headed josm plugin won't let me use my own josm-custom.jar. Now I'll
+    // That pig-headed josm plugin won't let me use my own josm.jar. Now I'll
     // teach him!
     val mainConfiguration = project.configurations.getByName("implementation")
     mainConfiguration.dependencies.forEach {
-        logger.lifecycle(it.getName())
-        if (it.getName() == "josm" && it.getVersion() == "18613") {
+        logger.lifecycle("${it.getName()}:${it.getVersion()}");
+        if (it.getName() == "josm") { // && it.getVersion() == "18613") {
             mainConfiguration.dependencies.remove(it)
             logger.lifecycle("poof!")
         }

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.GraphicsEnvironment;
 import java.util.stream.Stream;
 
 import mockit.Invocation;
@@ -23,7 +22,6 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.vector.VectorNode;
-import org.openstreetmap.josm.gui.ExtendedDialog;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetDialog;
@@ -55,6 +53,7 @@ class SmartEditAddActionTest {
     static JOSMTestRules josmTestRules = new JOSMTestRules().main().projection().presets();
     private PointObjectLayer pointObjectLayer;
     private VectorNode node;
+    private TaggingPresetDialogMock taggingPresetDialogMock = new TaggingPresetDialogMock();
 
     /**
      * Get a stream of arguments
@@ -83,7 +82,10 @@ class SmartEditAddActionTest {
     void actionPerformedNoOsmLayer(ObjectDetections detection) {
         node.put("value", detection.getKey());
         final SmartEditAddAction smartEditAddAction = new SmartEditAddAction(pointObjectLayer, node);
+
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
         smartEditAddAction.actionPerformed(null);
+
         assertAll(() -> assertFalse(node.isDeleted()), () -> assertFalse(node.isDisabled()),
             () -> assertTrue(node.isVisible()));
 
@@ -98,7 +100,10 @@ class SmartEditAddActionTest {
         final OsmDataLayer osmDataLayer = new OsmDataLayer(new DataSet(), "SmartEditAddActionTest", null);
         osmDataLayer.lock();
         MainApplication.getLayerManager().addLayer(osmDataLayer);
+
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
         smartEditAddAction.actionPerformed(null);
+
         assertAll(() -> assertFalse(node.isDeleted()), () -> assertFalse(node.isDisabled()),
             () -> assertTrue(node.isVisible()));
     }
@@ -113,10 +118,9 @@ class SmartEditAddActionTest {
         final OsmDataLayer osmDataLayer = new OsmDataLayer(new DataSet(), "SmartEditAddActionTest", null);
         MainApplication.getLayerManager().addLayer(osmDataLayer);
 
-        TaggingPresetDialogMock taggingPresetDialogMock = new TaggingPresetDialogMock();
-        taggingPresetDialogMock.result = TaggingPresetDialog.DIALOG_ANSWER_CANCEL;
-
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_CANCEL;
         smartEditAddAction.actionPerformed(null);
+
         assertAll(() -> assertFalse(node.isDeleted()), () -> assertFalse(node.isDisabled()),
             () -> assertTrue(node.isVisible()));
     }
@@ -128,7 +132,9 @@ class SmartEditAddActionTest {
         final OsmDataLayer osmDataLayer = this.commonApply(detection);
         final SmartEditAddAction smartEditAddAction = new SmartEditAddAction(pointObjectLayer, node);
 
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
         smartEditAddAction.actionPerformed(null);
+
         if (added) {
             assertAll(() -> assertTrue(node.isDeleted(), "The node should be deleted"), () -> assertEquals(1,
                 osmDataLayer.getDataSet().allPrimitives().size(), "The data layer should have a new node"));
@@ -147,7 +153,10 @@ class SmartEditAddActionTest {
         node.setOsmId(1234, 1);
         node.put(MapillaryMapFeatureUtils.MapFeatureProperties.IMAGES.toString(), "12345678");
         final OsmDataLayer osmDataLayer = this.commonApply(detection);
+
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
         new SmartEditAddAction(pointObjectLayer, node).actionPerformed(null);
+
         if (added) {
             final Node osmNode = osmDataLayer.getDataSet().getNodes().stream().findAny().orElse(null);
             assertNotNull(osmNode);
@@ -178,7 +187,10 @@ class SmartEditAddActionTest {
         node.setOsmId(1234, 1);
         node.put(MapillaryMapFeatureUtils.MapFeatureProperties.IMAGES.toString(), "12345678");
         final OsmDataLayer osmDataLayer = this.commonApply(detection);
+
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
         new SmartEditAddAction(pointObjectLayer, node).actionPerformed(null);
+
         if (added) {
             final Node osmNode = osmDataLayer.getDataSet().getNodes().stream().findAny().orElse(null);
             assertNotNull(osmNode);
@@ -200,28 +212,24 @@ class SmartEditAddActionTest {
         node.put("value", detection.getKey());
         MainApplication.getLayerManager().addLayer(osmDataLayer);
 
-        TaggingPresetDialogMock taggingPresetDialogMock = new TaggingPresetDialogMock();
-        taggingPresetDialogMock.result = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
+        taggingPresetDialogMock.answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
 
         return osmDataLayer;
     }
 
+    /**
+     * Fake the TaggingPresetDialog.
+     * <p>
+     * This class fakes a {@link TaggingPresetDialog} by returning immediately from
+     * {@link TaggingPresetDialog#setVisible} with the pre-set answer.
+     */
     private static class TaggingPresetDialogMock extends MockUp<TaggingPresetDialog> {
-        int result = 666;
+        int answer = TaggingPresetDialog.DIALOG_ANSWER_APPLY;
 
         @Mock
-        public ExtendedDialog showDialog(Invocation invocation) {
-            if (!GraphicsEnvironment.isHeadless())
-                return invocation.proceed();
-            return null; // who cares?
-        }
-
-        @Mock
-        public void setupDialog() {}
-
-        @Mock
-        public int getValue() {
-            return result;
+        public void setVisible(Invocation inv, boolean visible) {
+            TaggingPresetDialog dialog = inv.getInvokedInstance();
+            dialog.answer = answer;
         }
     }
 }
