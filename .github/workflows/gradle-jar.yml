@@ -3,6 +3,7 @@ name: Java Jar
 on:
   push:
     branches:
+      - master
       - develop
 
 jobs:
