@@ -34,12 +34,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.annotation.Nonnull;
 import javax.swing.Action;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.SwingUtilities;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.openstreetmap.josm.actions.UploadAction;
 import org.openstreetmap.josm.actions.upload.UploadHook;
 import org.openstreetmap.josm.data.Bounds;
@@ -138,11 +139,11 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
     private final ColorScale dateScale = ColorScale.createFixedScale(
         // Really old color
         new Color[] { ColorHelper.html2color("e17155"),
-        // Old color
-        ColorHelper.html2color("fbc01b"),
-        // New color
-        MapillaryColorScheme.SEQ_UNSELECTED
-    }).addTitle(tr("Time"));
+            // Old color
+            ColorHelper.html2color("fbc01b"),
+            // New color
+            MapillaryColorScheme.SEQ_UNSELECTED })
+        .addTitle(tr("Time"));
 
     /** The color scale used when drawing using direction */
     private final ColorScale directionScale = ColorScale.createCyclicScale(256).setIntervalCount(4)
@@ -158,7 +159,7 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
     /** {@code true} if this layer is destroyed */
     private boolean destroyed;
 
-    private static AlphaComposite fadeComposite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER,
+    private AlphaComposite fadeComposite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER,
         MapillaryProperties.UNSELECTED_OPACITY.get().floatValue());
     private static Point2D standardImageCentroid;
     private final ListenerList<MVTTile.TileListener> tileListeners = ListenerList.create();
@@ -349,6 +350,12 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
             }
         }
 
+        // Paint single images (see GH #219)
+        for (INode node : getData().searchNodes(box.toBBox()).stream().filter(node -> !node.isReferredByWays(1))
+            .sorted(Comparator.comparingInt(INode::getRawTimestamp)).distinct().collect(Collectors.toList())) {
+            drawImageMarker(originalTransform, selectedImage, g, node, distPer100Pixel, false, null);
+        }
+
         if (selectedImage != null) {
             // Paint the selected sequences
             for (IWay<?> way : selectedImage.getReferrers().stream().filter(IWay.class::isInstance)
@@ -356,20 +363,25 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
                 drawSequence(g, mv, way, selectedImage, originalTransform, distPer100Pixel);
                 for (INode n : way.getNodes()) {
                     if (n != selectedImage) {
-                        drawImageMarker(originalTransform, selectedImage, g, n, distPer100Pixel, false);
+                        drawImageMarker(originalTransform, selectedImage, g, n, distPer100Pixel, false, null);
                     }
                 }
             }
             // Paint selected images last. Not particularly worried about painting too much, since most people don't
             // select thousands of images.
             drawImageMarker(originalTransform, selectedImage, g, selectedImage, distPer100Pixel,
-                OffsetUtils.getOffset(selectedImage) != 0);
+                OffsetUtils.getOffset(selectedImage) != 0, null);
         }
     }
 
     private void drawSequence(final Graphics2D g, final MapView mv, final IWay<?> sequence, final INode selectedImage,
         AffineTransform originalTransform, double distPer100Pixel) {
         final List<? extends INode> nodes = sequence.getNodes();
+        String id = MapillarySequenceUtils.getKey(sequence);
+        if (nodes.stream().filter(INode::isTagged).filter(INode::isVisible).map(MapillaryImageUtils::getSequenceKey)
+            .noneMatch(id::equals)) {
+            return;
+        }
         if (selectedImage != null && !nodes.contains(selectedImage)) {
             g.setComposite(fadeComposite);
         }
@@ -384,17 +396,19 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         INode previous = null;
         Point previousPoint = null;
         for (INode current : nodes) {
+            if (!current.isVisible() && current.isTagged()) {
+                continue;
+            }
             final Point currentPoint = mv.getPoint(current);
             if (MapillaryImageUtils.isImage(current)) {
                 g.setColor(forcedColor != null ? forcedColor : getColor(current));
             }
             if (previous != null && (mv.contains(currentPoint) || mv.contains(previousPoint))) {
-                // FIXME get the right color for the line segment
                 final boolean visibleNode = zoom >= 14 && sequence.isVisible() && MapillaryImageUtils.isImage(previous);
                 g.drawLine(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y);
                 if (visibleNode) {
-                    // FIXME draw the image here (avoid calculating the points twice)
-                    drawImageMarker(originalTransform, selectedImage, g, previous, distPer100Pixel, false);
+                    drawImageMarker(originalTransform, selectedImage, g, previous, distPer100Pixel, false,
+                        previousPoint);
                 }
             }
             previous = current;
@@ -402,8 +416,7 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         }
         final boolean visibleNode = zoom >= 14 && sequence.isVisible() && MapillaryImageUtils.isImage(previous);
         if (visibleNode) {
-            // FIXME draw the image here (avoid calculating the points twice)
-            drawImageMarker(originalTransform, selectedImage, g, previous, distPer100Pixel, false);
+            drawImageMarker(originalTransform, selectedImage, g, previous, distPer100Pixel, false, previousPoint);
         }
         g.setComposite(AlphaComposite.SrcOver);
     }
@@ -474,13 +487,17 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
      * @param selectedImg Currently selected nodes
      * @param g the Graphics context
      * @param img the image to be drawn onto the Graphics context
+     * @param imgPoint The point where the image is located in the graphics space
      * @param dist100Pixel The distance per 100 px
      * @param offset {@code true} if we may be painting the offset for an image
      */
     private void drawImageMarker(final AffineTransform originalTransform, final INode selectedImg, final Graphics2D g,
-        final INode img, final double dist100Pixel, final boolean offset) {
+        final INode img, final double dist100Pixel, final boolean offset, @Nullable final Point imgPoint) {
         if (img == null || !img.isLatLonKnown()) {
             Logging.warn("An image is not painted, because it is null or has no LatLon!");
+            return;
+        }
+        if (!img.isVisible()) {
             return;
         }
         Composite originalComposite = g.getComposite();
@@ -515,7 +532,7 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         }
         MapView mv = MainApplication.getMap().mapView;
 
-        final Point p = mv.getPoint(img.getEastNorth());
+        final Point p = imgPoint != null ? imgPoint : mv.getPoint(img.getEastNorth());
         paintDirectionIndicator(g, directionC, img, originalTransform, p, i);
         this.paintHighlight(g, img, selectedImg);
 
@@ -545,8 +562,8 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         g.setTransform(originalTransform);
     }
 
-    private static void paintDirectionIndicator(Graphics2D g, Color directionC, INode img,
-        AffineTransform originalTransform, Point p, Image i) {
+    private void paintDirectionIndicator(Graphics2D g, Color directionC, INode img, AffineTransform originalTransform,
+        Point p, Image i) {
         // Paint direction indicator
         g.setColor(directionC);
         if (MapillaryImageUtils.IS_PANORAMIC.test(img)) {

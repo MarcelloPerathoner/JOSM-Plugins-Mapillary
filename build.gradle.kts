@@ -13,12 +13,12 @@ import kotlin.reflect.full.starProjectedType
 
 plugins {
   id("application")
-  id("com.diffplug.spotless") version "6.9.1"
-  id("com.github.ben-manes.versions") version "0.42.0"
-  id("com.github.spotbugs") version "5.0.9"
-  id("net.ltgt.errorprone") version "2.0.2"
-  id("org.openstreetmap.josm") version "0.8.0"
-  id("org.sonarqube") version "3.4.0.2513"
+  id("com.diffplug.spotless") version "6.20.0"
+  id("com.github.ben-manes.versions") version "0.47.0"
+  id("com.github.spotbugs") version "5.0.14"
+  id("net.ltgt.errorprone") version "3.1.0"
+  id("org.openstreetmap.josm") version "0.8.2"
+  id("org.sonarqube") version "4.3.0.3225"
   //id("org.checkerframework") version "0.6.14"
 
   eclipse
@@ -62,13 +62,13 @@ tasks.withType(JavaCompile::class).configureEach {
 val versions = mapOf(
   "awaitility" to "4.2.0",
   // Errorprone 2.11 requires Java 11+
-  "errorprone" to if (JavaVersion.current() >= JavaVersion.VERSION_11) "2.15.0" else "2.10.0",
+  "errorprone" to if (JavaVersion.current() >= JavaVersion.VERSION_11) "2.20.0" else "2.10.0",
   "jdatepicker" to "1.3.4",
   "jmockit" to "1.49.a",
-  "junit" to "5.9.0",
+  "junit" to "5.9.3",
   "pmd" to "6.42.0",
-  "spotbugs" to "4.7.1",
-  "wiremock" to "2.33.2"
+  "spotbugs" to "4.7.3",
+  "wiremock" to "2.35.0"
 )
 
 val home = System.getProperty("user.home")
@@ -213,6 +213,7 @@ josm {
   debugPort = 7051
   manifest {
     // See https://floscher.gitlab.io/gradle-josm-plugin/kdoc/latest/gradle-josm-plugin/org.openstreetmap.josm.gradle.plugin.config/-josm-manifest/old-version-download-link.html
+    oldVersionDownloadLink(18613, "2.1.5", URL("https://github.com/JOSM/Mapillary/releases/download/v2.1.5/Mapillary.jar"));
     oldVersionDownloadLink(18531, "v2.0.2", URL("https://github.com/JOSM/Mapillary/releases/download/v2.0.2/Mapillary.jar"));
     oldVersionDownloadLink(17903, "v2.0.0-alpha.36", URL("https://github.com/JOSM/Mapillary/releases/download/v2.0.0-alpha.36/Mapillary.jar"))
   }
@@ -305,7 +306,7 @@ tasks.withType(SpotBugsTask::class) {
 
 // JaCoCo config
 jacoco {
-  toolVersion = "0.8.8"
+  toolVersion = "0.8.10"
 }
 
 tasks.jacocoTestReport {

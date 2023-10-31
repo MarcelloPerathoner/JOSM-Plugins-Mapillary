@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
-import javax.annotation.Nonnull;
 import javax.swing.AbstractAction;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -38,6 +37,8 @@ import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import jakarta.annotation.Nonnull;
+import org.openstreetmap.josm.data.Version;
 import org.openstreetmap.josm.data.imagery.vectortile.mapbox.MVTTile;
 import org.openstreetmap.josm.data.osm.INode;
 import org.openstreetmap.josm.data.osm.IPrimitive;
@@ -214,20 +215,40 @@ public final class MapillaryFilterDialog extends ToggleDialog
 
         // Listeners
         filterByDateCheckbox.addItemListener(itemE -> {
-            spinner.setEnabled(filterByDateCheckbox.isSelected());
-            time.setEnabled(filterByDateCheckbox.isSelected());
+            final boolean isSelected = filterByDateCheckbox.isSelected();
+            spinner.setEnabled(isSelected);
+            time.setEnabled(isSelected);
+            if (isSelected) {
+                this.startDate.setInstant(convertDateRangeBox(spinnerModel, time));
+                this.shouldHidePredicate.startDateRefresh = this.startDate.getInstant();
+            } else {
+                this.startDate.reset();
+                this.shouldHidePredicate.startDateRefresh = Instant.MIN;
+            }
         });
 
-        spinner.addChangeListener(l -> startDate.setInstant(convertDateRangeBox(spinnerModel, time)));
-        time.addActionListener(l -> startDate.setInstant(convertDateRangeBox(spinnerModel, time)));
+        spinner.addChangeListener(l -> {
+            this.startDate.setInstant(convertDateRangeBox(spinnerModel, time));
+            this.shouldHidePredicate.startDateRefresh = this.startDate.getInstant();
+        });
+        time.addActionListener(l -> {
+            this.startDate.setInstant(convertDateRangeBox(spinnerModel, time));
+            this.shouldHidePredicate.startDateRefresh = this.startDate.getInstant();
+        });
         filterByDateCheckbox.addChangeListener(l -> startDate.setInstant(convertDateRangeBox(spinnerModel, time)));
 
         endDate.addEventHandler(l -> this.shouldHidePredicate.endDateRefresh = l.getInstant());
         startDate.addEventHandler(l -> this.shouldHidePredicate.startDateRefresh = l.getInstant());
         filterByDateCheckbox
             .addItemListener(l -> this.shouldHidePredicate.timeFilter = l.getStateChange() == ItemEvent.SELECTED);
-        spinnerModel.addChangeListener(l -> this.shouldHidePredicate.dateRange = spinnerModel.getNumber());
-        time.addItemListener(l -> this.shouldHidePredicate.time = (String) l.getItem());
+        time.addItemListener(l -> {
+            if (time.getSelectedIndex() == 2) { // Days are the finest resolution we offer in the calendar
+                spinnerModel.setStepSize(1);
+                spinnerModel.setValue(Math.round(spinnerModel.getNumber().doubleValue()));
+            } else {
+                spinnerModel.setStepSize(0.1);
+            }
+        });
 
         this.resetObjects.addListener(() -> {
             filterByDateCheckbox.setSelected(false);
@@ -249,8 +270,6 @@ public final class MapillaryFilterDialog extends ToggleDialog
             this.shouldHidePredicate.timeFilter = filterByDateCheckbox.isSelected();
             this.shouldHidePredicate.endDateRefresh = endDate.getInstant();
             this.shouldHidePredicate.startDateRefresh = startDate.getInstant();
-            this.shouldHidePredicate.dateRange = spinnerModel.getNumber();
-            this.shouldHidePredicate.time = (String) time.getSelectedItem();
         };
         this.resetObjects.addListener(setFields);
         setFields.reset();
@@ -409,8 +428,6 @@ public final class MapillaryFilterDialog extends ToggleDialog
 
     private static class ImageFilterPredicate implements Predicate<INode> {
         ImageTypes imageTypes;
-        String time;
-        Number dateRange;
         private boolean layerVisible;
         boolean timeFilter;
         Instant endDateRefresh;
@@ -459,7 +476,7 @@ public final class MapillaryFilterDialog extends ToggleDialog
                 }
             }
             // Filter on time
-            if ((this.timeFilter && checkValidTime(img)) || checkEndDate(img) || checkStartDate(img)
+            if (checkEndDate(img) || checkStartDate(img)
                 || (this.imageTypes == ImageTypes.PANORAMIC && !MapillaryImageUtils.IS_PANORAMIC.test(img))
                 || (this.imageTypes == ImageTypes.NON_PANORAMIC && MapillaryImageUtils.IS_PANORAMIC.test(img))) {
                 return true;
@@ -478,17 +495,6 @@ public final class MapillaryFilterDialog extends ToggleDialog
          */
         final void updateLayerVisible() {
             this.layerVisible = MapillaryLayer.hasInstance() && MapillaryLayer.getInstance().isVisible();
-        }
-
-        private boolean checkValidTime(INode img) {
-            final long currentTime = Instant.now().toEpochMilli();
-            for (int i = 0; i < 3; i++) {
-                if (TIME_LIST[i].equals(time) && MapillaryImageUtils.getDate(img).toEpochMilli() < currentTime
-                    - dateRange.doubleValue() * TIME_FACTOR[i]) {
-                    return true;
-                }
-            }
-            return false;
         }
 
         /**
@@ -562,7 +568,7 @@ public final class MapillaryFilterDialog extends ToggleDialog
         if (!destroyed) {
             super.destroy();
             this.destroyable.fireEvent(Destroyable::destroy);
-            if (MainApplication.getMap() != null) {
+            if (MainApplication.getMap() != null && Version.getInstance().getVersion() < 18686) {
                 MainApplication.getMap().removeToggleDialog(this);
             }
             OrganizationRecord.removeOrganizationListener(this);

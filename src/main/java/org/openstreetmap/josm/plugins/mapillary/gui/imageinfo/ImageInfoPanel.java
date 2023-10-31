@@ -18,13 +18,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SpinnerNumberModel;
 
+import jakarta.annotation.Nullable;
+import org.openstreetmap.josm.data.Version;
 import org.openstreetmap.josm.data.osm.DataSelectionListener;
 import org.openstreetmap.josm.data.osm.INode;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
@@ -322,7 +323,7 @@ public final class ImageInfoPanel extends ToggleDialog implements DataSelectionL
     public void destroy() {
         if (!destroyed) {
             super.destroy();
-            if (MainApplication.getMap() != null)
+            if (MainApplication.getMap() != null && Version.getInstance().getVersion() < 18686)
                 MainApplication.getMap().removeToggleDialog(this);
             destroyed = true;
         }

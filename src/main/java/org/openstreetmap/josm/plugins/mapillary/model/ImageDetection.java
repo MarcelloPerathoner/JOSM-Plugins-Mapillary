@@ -5,7 +5,7 @@ import java.awt.Color;
 import java.awt.Shape;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,11 +22,10 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
-import javax.annotation.Nullable;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-
+import jakarta.annotation.Nullable;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.openstreetmap.josm.data.cache.JCSCacheManager;
 import org.openstreetmap.josm.data.osm.IPrimitive;
@@ -50,9 +49,14 @@ import org.openstreetmap.josm.tools.Pair;
 
 /**
  * A store for ImageDetection information
+ *
+ * @param <T> The shape type
  */
 public class ImageDetection<T extends Shape> extends SpecialImageArea<Long, T> {
 
+    /**
+     * Options for getting detections
+     */
     public enum Options {
         /** Wait for the fetch to complete. Implies {@link #FETCH} */
         WAIT,
@@ -251,7 +255,7 @@ public class ImageDetection<T extends Shape> extends SpecialImageArea<Long, T> {
 
     @Override
     public boolean equals(Object other) {
-        if (super.equals(other) && other instanceof ImageDetection) {
+        if (super.equals(other) && this.getClass().equals(other.getClass())) {
             ImageDetection<?> o = (ImageDetection<?>) other;
             return Objects.equals(this.approvalType, o.approvalType)
                 && Objects.equals(this.originalValue, o.originalValue) && this.rejected == o.rejected
@@ -288,7 +292,9 @@ public class ImageDetection<T extends Shape> extends SpecialImageArea<Long, T> {
         private static final long serialVersionUID = 1356001237946179L;
         private final transient ListenerList<BiConsumer<Long, Collection<ImageDetection<?>>>> listenerList = ListenerList
             .create();
+        /** The image key for the detection we are getting */
         public final long key;
+        /** The results from getting the detections for the image key */
         private List<ImageDetection<?>> results;
 
         public ImageDetectionForkJoinTask(long key, BiConsumer<Long, Collection<ImageDetection<?>>> listener) {
@@ -333,7 +339,7 @@ public class ImageDetection<T extends Shape> extends SpecialImageArea<Long, T> {
             final String urlString = MapillaryConfig.getUrls().getDetectionInformation(key);
             final String jsonString = Caches.META_DATA_CACHE.get(urlString, () -> {
                 try {
-                    final JsonObject jsonObject = OAuthUtils.getWithHeader(new URL(urlString));
+                    final JsonObject jsonObject = OAuthUtils.getWithHeader(URI.create(urlString));
                     return jsonObject != null ? jsonObject.toString() : null;
                 } catch (IOException e) {
                     Logging.error(e);

@@ -8,12 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,12 +24,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
 import mockit.Invocation;
 import mockit.Mock;
 import mockit.MockUp;
@@ -249,8 +247,8 @@ class OAuthUtilsTest {
 
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.APPLICATION_REQUEST_LIMIT_REACHED)
-    void testApplicationRequestLimitReached() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+    void testApplicationRequestLimitReached() {
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         assertDoesNotThrow(() -> OAuthUtils.getWithHeader(url), "Responses may be parsed, which may fail.");
         assertAll("Application request limit should not log out the user", LOGGED_IN_CHECKS);
         this.testAuthenticationRefresh(url);
@@ -259,7 +257,7 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.BAD_REQUEST)
     void testBadRequest() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_BAD_REQUEST);
         assertThrows(IOException.class, () -> OAuthUtils.getWithHeader(url),
             "Responses may be parsed, which will likely fail.");
@@ -269,7 +267,7 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.FORBIDDEN)
     void testForbiddenRequest() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_FORBIDDEN);
         assertThrows(IOException.class, () -> OAuthUtils.getWithHeader(url),
             "Responses may be parsed, which will likely fail.");
@@ -279,7 +277,7 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.NOT_FOUND)
     void testNotFoundResponse() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_NOT_FOUND);
         assertThrows(IOException.class, () -> OAuthUtils.getWithHeader(url),
             "Responses may be parsed, which will likely fail.");
@@ -289,7 +287,7 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.NO_CONTENT)
     void testNoContentResponse() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_NO_CONTENT);
         assertThrows(IOException.class, () -> OAuthUtils.getWithHeader(url),
             "Responses may be parsed, which will likely fail.");
@@ -299,7 +297,7 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.SERVER_ERROR)
     void testServerErrorResponse() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_INTERNAL_ERROR);
         assertDoesNotThrow(() -> OAuthUtils.getWithHeader(url), "Responses may be parsed, which may fail.");
         assertAll("Server errors should not log out the user", LOGGED_IN_CHECKS);
@@ -309,7 +307,7 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.UNAUTHORIZED)
     void testUnauthorizedResponse() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_UNAUTHORIZED);
         assertThrows(IOException.class, () -> OAuthUtils.getWithHeader(url),
             "Responses may be parsed, which will likely fail.");
@@ -319,27 +317,25 @@ class OAuthUtilsTest {
     @Test
     @MapillaryURLWireMockErrors(MapillaryURLWireMockErrors.Type.UNAUTHORIZED_APPLICATION)
     void testUnauthorizedApplicationResponse() throws IOException {
-        final URL url = new URL(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
+        final URI url = URI.create(MapillaryConfig.getUrls().getImageInformation(IMAGE_ID));
         verifyCorrectResponseCode(url, HttpURLConnection.HTTP_UNAUTHORIZED);
         assertDoesNotThrow(() -> OAuthUtils.getWithHeader(url), "Responses may be parsed, which may fail.");
         assertAll("An unauthorized application response should log out the user", NOT_LOGGED_IN_CHECKS);
         this.testAuthenticationRefresh(url);
     }
 
-    void testAuthenticationRefresh(final URL url) {
+    void testAuthenticationRefresh(final URI url) {
         OAuthUtils.updateAuthorization(
             getUpdateAuthorizationJsonObjectBuilder(Duration.ofSeconds(10), "test", "bearer").build());
         assertDoesNotThrow(() -> OAuthUtils.getWithHeader(url));
     }
 
-    private static void verifyCorrectResponseCode(final URL url, final int responseCode) {
-        final HttpClient client = HttpClient.create(url);
+    private static void verifyCorrectResponseCode(final URI url, final int responseCode) throws IOException {
+        final HttpClient client = HttpClient.create(url.toURL());
         OAuthUtils.addAuthenticationHeader(client);
         try {
             final HttpClient.Response response = client.connect();
             assertEquals(responseCode, response.getResponseCode(), response.fetchContent());
-        } catch (IOException ioException) {
-            fail(ioException);
         } finally {
             client.disconnect();
         }

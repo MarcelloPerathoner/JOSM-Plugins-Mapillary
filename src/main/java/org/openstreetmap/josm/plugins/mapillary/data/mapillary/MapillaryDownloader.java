@@ -3,8 +3,7 @@ package org.openstreetmap.josm.plugins.mapillary.data.mapillary;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,15 +15,14 @@ import java.util.Map;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.json.Json;
-import javax.json.JsonNumber;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonString;
-import javax.json.JsonValue;
-
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.json.Json;
+import jakarta.json.JsonNumber;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import org.openstreetmap.josm.data.osm.IWay;
 import org.openstreetmap.josm.plugins.mapillary.cache.Caches;
 import org.openstreetmap.josm.plugins.mapillary.gui.layer.MapillaryLayer;
@@ -156,7 +154,7 @@ public final class MapillaryDownloader {
     }
 
     @Nullable
-    static JsonObject getUrlResponse(@Nonnull URL url) {
+    static JsonObject getUrlResponse(@Nonnull URI url) {
         try {
             return OAuthUtils.getWithHeader(url);
         } catch (IOException e) {
@@ -168,8 +166,8 @@ public final class MapillaryDownloader {
     @Nullable
     static JsonObject getUrlResponse(@Nonnull String url) {
         try {
-            return getUrlResponse(new URL(url));
-        } catch (MalformedURLException e) {
+            return getUrlResponse(URI.create(url));
+        } catch (IllegalArgumentException e) {
             Logging.error(e);
         }
         return null;

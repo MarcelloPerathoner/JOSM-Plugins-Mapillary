@@ -8,14 +8,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
 
-import javax.annotation.Nullable;
-import javax.json.Json;
-import javax.json.JsonException;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
 import javax.swing.JOptionPane;
 
+import jakarta.annotation.Nullable;
+import jakarta.json.Json;
+import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonValue;
 import org.openstreetmap.josm.data.Version;
 import org.openstreetmap.josm.data.preferences.IntegerProperty;
 import org.openstreetmap.josm.data.preferences.StringProperty;
@@ -27,6 +27,9 @@ import org.openstreetmap.josm.plugins.PluginInformation;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
+/**
+ * Check if Mapillary or JOSM are old versions
+ */
 public final class OldVersionDialog {
     private static final IntegerProperty SHOWN_OLD = new IntegerProperty("mapillary.shown_old", 0);
     private static final StringProperty NEW_VERSION = new StringProperty("mapillary.new_version", null);

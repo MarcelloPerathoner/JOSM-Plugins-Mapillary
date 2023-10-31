@@ -13,12 +13,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
-
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import org.openstreetmap.josm.data.imagery.vectortile.mapbox.Feature;
 import org.openstreetmap.josm.data.imagery.vectortile.mapbox.Layer;
 import org.openstreetmap.josm.data.protobuf.ProtobufParser;
@@ -81,7 +80,7 @@ public final class JsonImageDetectionDecoder {
     }
 
     /**
-     * Decode image ids (mostly so we can select the appropriate image)
+     * Decode image ids (so we can select the appropriate image)
      *
      * @param jsonValue The value to decode
      * @param defaultImageId The default image id. May be {@code null}.

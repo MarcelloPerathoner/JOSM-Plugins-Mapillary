@@ -18,9 +18,8 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.openstreetmap.josm.plugins.mapillary.utils.MapillaryImageUtils;
 import org.openstreetmap.josm.plugins.mapillary.utils.MapillaryMapFeatureUtils;
 import org.openstreetmap.josm.plugins.mapillary.utils.MapillaryProperties;
@@ -64,6 +63,25 @@ public interface IMapillaryUrls {
     String getAccessId();
 
     /**
+     * Get the access id in a URL safe manner (the http2 plugin doesn't like {@code "|"} characters)
+     *
+     * @return The access id
+     */
+    default String getUrlEncodedAccessId() {
+        final String originalAccessId = getAccessId();
+        if (originalAccessId == null) {
+            return null;
+        }
+        try {
+            // Once we move to Java 10+, we can drop the name() and the catch
+            return URLEncoder.encode(originalAccessId, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException unsupportedEncodingException) {
+            // We've hardcoded the UTF-8 charset, so this should never happen unless Java drops UTF_8.
+            throw new JosmRuntimeException(unsupportedEncodingException);
+        }
+    }
+
+    /**
      * Get the client id
      *
      * @return the client id
@@ -91,7 +109,7 @@ public interface IMapillaryUrls {
      */
     default String getTrafficSigns() {
         return MapillaryConfig.getUrls().getBaseTileUrl() + "mly_map_feature_traffic_sign/2/{z}/{x}/{y}?access_token="
-            + getAccessId();
+            + getUrlEncodedAccessId();
     }
 
     /**
@@ -101,7 +119,7 @@ public interface IMapillaryUrls {
      */
     default String getObjectDetections() {
         return MapillaryConfig.getUrls().getBaseTileUrl() + "mly_map_feature_point/2/{z}/{x}/{y}?access_token="
-            + getAccessId();
+            + getUrlEncodedAccessId();
     }
 
     /**
@@ -124,9 +142,10 @@ public interface IMapillaryUrls {
     default String getImages() {
         if (Boolean.TRUE.equals(MapillaryProperties.USE_COMPUTED_LOCATIONS.get())) {
             return MapillaryConfig.getUrls().getBaseTileUrl() + "mly1_computed_public/2/{z}/{x}/{y}?access_token="
-                + getAccessId();
+                + getUrlEncodedAccessId();
         }
-        return MapillaryConfig.getUrls().getBaseTileUrl() + "mly1_public/2/{z}/{x}/{y}?access_token=" + getAccessId();
+        return MapillaryConfig.getUrls().getBaseTileUrl() + "mly1_public/2/{z}/{x}/{y}?access_token="
+            + getUrlEncodedAccessId();
     }
 
     /**
