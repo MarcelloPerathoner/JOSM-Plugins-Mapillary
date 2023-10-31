@@ -112,11 +112,11 @@ public class SmartEditAddAction extends JosmAction {
             // Show the dialog.  Usually we would pass a data handler to the dialog but
             // since our case is special (there's no primitive yet in the dataset for
             // the preset to work upon) it's maybe easier this way.
-            TaggingPresetDialog dialog = preset.prepareDialog(null, null);
+            TaggingPresetDialog dialog = preset.prepareDialog(null, null, false);
             if (dialog != null) {
                 dialog.getPresetInstance().fillIn(firstTags);
                 dialog.setVisible(true);
-                if (dialog.answer == TaggingPresetDialog.DIALOG_ANSWER_APPLY) {
+                if (dialog.getAnswer() == TaggingPresetDialog.DIALOG_ANSWER_APPLY) {
                     // since we passed no handler to the dialog we must handle it ourselves
                     firstTags.putAll(dialog.getPresetInstance().getChangedTags());
                     List<PrimitiveData> add = toAdd.stream().map(OsmPrimitive::save).collect(Collectors.toList());

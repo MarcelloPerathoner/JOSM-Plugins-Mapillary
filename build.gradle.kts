@@ -101,13 +101,15 @@ dependencies {
   testImplementation(files("$home/prj/josm/test/unit"))
 }
 
+version = "0.0.1"
+
 project.afterEvaluate {
-    // That pig-headed josm plugin won't let me use my own josm.jar. Now I'll
-    // teach him!
+    // That pig-headed josm plugin won't let me use my own josm.jar.
+    // Now I'll teach it!
     val mainConfiguration = project.configurations.getByName("implementation")
     mainConfiguration.dependencies.forEach {
         logger.lifecycle("${it.getName()}:${it.getVersion()}");
-        if (it.getName() == "josm") { // && it.getVersion() == "18613") {
+        if (it.getName() == "josm") {
             mainConfiguration.dependencies.remove(it)
             logger.lifecycle("poof!")
         }
@@ -118,7 +120,7 @@ tasks.register<Copy>("install") {
     description = "Install the plugin locally."
     dependsOn("dist")
     from(tasks.named("dist"))
-    into("$home/.local/share/JOSM/plugins")
+    into("$home/.local/share/JOSM-custom/plugins")
 }
 
 sourceSets {
