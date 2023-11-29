@@ -22,11 +22,14 @@ import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.INode;
 import org.openstreetmap.josm.data.osm.IPrimitive;
 import org.openstreetmap.josm.data.osm.IWay;
+import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.PrimitiveData;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.vector.VectorPrimitive;
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.tagging.DataHandlers.DataSetHandler;
+import org.openstreetmap.josm.gui.tagging.ac.AutoCompletionManager;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPreset;
 import org.openstreetmap.josm.gui.tagging.presets.TaggingPresetDialog;
 import org.openstreetmap.josm.plugins.mapillary.command.SmartEditAddCommand;
@@ -111,7 +114,7 @@ public class SmartEditAddAction extends JosmAction {
             // Show the dialog.  Usually we would pass a data handler to the dialog but
             // since our case is special (there's no primitive yet in the dataset for
             // the preset to work upon) it's maybe easier this way.
-            TaggingPresetDialog dialog = preset.prepareDialog(null, null, false);
+            TaggingPresetDialog dialog = preset.prepareDialog((DataSetHandler) null, (AutoCompletionManager) null, false);
             if (dialog != null) {
                 dialog.getPresetInstance().fillIn(firstTags);
                 dialog.setVisible(true);

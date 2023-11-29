@@ -10,6 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       LANG: en_US.UTF-8
+
     strategy:
       fail-fast: false
       matrix:
@@ -19,38 +20,47 @@ jobs:
         # java: [8, 11, 17, 21]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 256
-
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: ${{ matrix.java }}
 
-      - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v1
-
-      - name: Download JOSM custom jar
-        id: download
+      - name: Checkout Core
         run: |
-          mkdir -p libs
-          curl -L -o libs/josm.jar "https://github.com/MarcelloPerathoner/josm/releases/latest/download/josm.jar"
+          git clone --branch develop --depth=1 https://github.com/$GITHUB_REPOSITORY_OWNER/josm.git core
+          echo "JOSM_DIR=$(pwd)/core" >> $GITHUB_ENV
 
-      - name: Build
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: jar
+      - name: Checkout Plugin
+        run: |
+          git clone --branch develop --depth=1 https://github.com/$GITHUB_REPOSITORY.git plugin
+          echo "PLUGIN_DIR=$(pwd)/plugin" >> $GITHUB_ENV
+
+      - name: Build Core
+        run: |
+          cd $JOSM_DIR
+          ./gradlew jar
+
+      - name: Build Plugin
+        run: |
+          cd $PLUGIN_DIR
+          ./gradlew jar sourcesJar javadocJar
 
       - name: Generate release tag
         id: tag
         run: |
           echo "RELEASE_TAG=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
 
+      - name: Generate MANIFEST
+        id: manifest
+        run: |
+          cd $PLUGIN_DIR
+          python $JOSM_DIR/scripts/manifest.py --icons --root-dir build/libs *.jar > build/libs/MANIFEST
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          files: build/libs/*.jar
+          files: |
+            ${{ env.PLUGIN_DIR }}/build/libs/*.jar
+            ${{ env.PLUGIN_DIR }}/build/libs/MANIFEST

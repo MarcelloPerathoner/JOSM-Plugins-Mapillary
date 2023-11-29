@@ -37,10 +37,7 @@ import java.util.stream.Stream;
 import javax.swing.Action;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
-import javax.swing.SwingUtilities;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.openstreetmap.josm.actions.UploadAction;
 import org.openstreetmap.josm.actions.upload.UploadHook;
 import org.openstreetmap.josm.data.Bounds;
@@ -85,7 +82,6 @@ import org.openstreetmap.josm.plugins.mapillary.data.mapillary.MapillarySequence
 import org.openstreetmap.josm.plugins.mapillary.data.mapillary.OrganizationRecord;
 import org.openstreetmap.josm.plugins.mapillary.data.mapillary.VectorDataSelectionListener;
 import org.openstreetmap.josm.plugins.mapillary.gui.dialog.MapillaryFilterDialog;
-import org.openstreetmap.josm.plugins.mapillary.gui.dialog.OldVersionDialog;
 import org.openstreetmap.josm.plugins.mapillary.gui.layer.geoimage.MapillaryImageEntry;
 import org.openstreetmap.josm.plugins.mapillary.gui.workers.MapillaryNodeDownloader;
 import org.openstreetmap.josm.plugins.mapillary.gui.workers.MapillarySequenceDownloader;
@@ -106,6 +102,9 @@ import org.openstreetmap.josm.tools.ListenerList;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.Pair;
 import org.openstreetmap.josm.tools.Utils;
+
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 /**
  * This class represents the layer shown in JOSM. There can only exist one
@@ -173,7 +172,6 @@ public final class MapillaryLayer extends MVTLayer implements ActiveLayerChangeL
         Stream.of(MapillaryPlugin.getMapillaryDataListeners())
             .forEach(listener -> this.getData().addSelectionListener(listener));
         UploadAction.registerUploadHook(this, true);
-        SwingUtilities.invokeLater(OldVersionDialog::showOldVersion);
 
         this.addTileDownloadListener(OrganizationRecord::addFromTile);
         this.addTileDownloadListener(MapillaryFilterDialog.getInstance());
