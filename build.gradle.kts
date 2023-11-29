@@ -18,19 +18,26 @@ val JOSM_DIR = System.getenv("JOSM_DIR")
 // the java language version to use for compilation
 val JAVA_LANG_VERSION = 17
 
-plugins {
-  id("application")
-  id("com.diffplug.spotless") version "6.20.0"
-  id("com.github.ben-manes.versions") version "0.47.0"
-  id("com.github.spotbugs") version "5.0.14"
-  id("net.ltgt.errorprone") version "3.1.0"
-  id("org.sonarqube") version "4.3.0.3225"
+val buildDir = getProject().getLayout().getBuildDirectory()
 
-  eclipse
-  jacoco
-  java
-  `maven-publish`
-  pmd
+plugins {
+    id("application")
+    id("base")
+    id("com.diffplug.spotless") version "6.20.0"
+    id("com.github.ben-manes.versions") version "0.47.0"
+    id("com.github.spotbugs") version "5.0.14"
+    id("net.ltgt.errorprone") version "3.1.0"
+    id("org.sonarqube") version "4.3.0.3225"
+
+    eclipse
+    jacoco
+    java
+    `maven-publish`
+    pmd
+}
+
+base {
+    archivesName = "Mapillary"
 }
 
 repositories {
@@ -77,8 +84,6 @@ val versions = mapOf(
   "wiremock" to "2.35.0"
 )
 
-val home = System.getProperty("user.home")
-
 dependencies {
   errorprone("com.google.errorprone:error_prone_core:${versions["errorprone"]}")
   // testImplementation("org.openstreetmap.josm:josm-unittest:SNAPSHOT"){ isChanging = true }
@@ -97,10 +102,9 @@ dependencies {
 
   implementation("org.apache.commons:commons-imaging:1.0-alpha3")
 
-  implementation(files("$home/prj/josm/build/libs/josm.jar"))
-  // implementation(files("$home/prj/josm/build/classes/java/main"))
-  testImplementation(files("$home/prj/josm/build/classes/java/test"))
-  testImplementation(files("$home/prj/josm/test/unit"))
+  implementation(files("${JOSM_DIR}/build/libs/josm.jar"))
+  testImplementation(files("${JOSM_DIR}/build/classes/java/test"))
+  testImplementation(files("${JOSM_DIR}/test/unit"))
 }
 
 /**
@@ -217,7 +221,6 @@ tasks {
         }
     }
     jar {
-        archiveBaseName.set("Mapillary")
         manifest {
             attributes(
                 "Manifest-Version"            to "1.0",
@@ -366,7 +369,7 @@ spotbugs {
   ignoreFailures.set(true)
   effort.set(Effort.MAX)
   reportLevel.set(Confidence.LOW)
-  reportsDir.set(File(buildDir, "reports/spotbugs"))
+  reportsDir.set(buildDir.dir("reports/spotbugs"))
 }
 tasks.withType(SpotBugsTask::class) {
   reports.create("html") {
@@ -384,7 +387,7 @@ jacoco {
 tasks.jacocoTestReport {
   reports {
     xml.required.set(true)
-    html.outputLocation.set(file("$buildDir/reports/jacoco"))
+    html.outputLocation.set(buildDir.dir("reports/jacoco"))
   }
 }
 
